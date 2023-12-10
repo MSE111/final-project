@@ -1,32 +1,37 @@
 import common
 import numpy as np
 
-def ahlda(bids, k, n, m, b_i, opt):
+def ahlda(bids, k, n, b_i, opt):
     """
     Action-history-dependent Learning Algorithm.
     """
-    revenue = 0
+    incremental_rev = 0
     remaining_capacity = np.array(b_i)
     performance = []
 
     for i in range(1, k + 1):
         # Update dual prices
-        y_bar = common.solve_partial_lp_dual(bids, i, n, remaining_capacity)
+        y_bar, rev = common.solve_lp_get_dual(bids, i, n, remaining_capacity)
 
         # Make decision for bid i
         a_k, pi_k = bids[i - 1]
         if pi_k > np.dot(a_k, y_bar) and all(remaining_capacity - a_k >= 0):
-            revenue += pi_k
+            incremental_rev += pi_k
             remaining_capacity -= a_k
         
         # Compute performance metric
-        performance.append(revenue - (i / n) * opt)
+        if not performance:
+            last_rev = 0
+        if len(performance) > 0:
+            last_rev = performance[-1]
+        performance.append(last_rev + (incremental_rev - (i / n) * opt)*-1)
+        # performance.append((incremental_rev - (i / n) * opt)*-1)
 
     return performance
 
-def performance_metric_slpm_revised(bids, k_values, n, m, b_i, opt):
+def slpm_problem_3(bids, k_values, n, b_i, opt):
     """
-    Run the revised SLPM algorithm with dynamic dual price updates and compute performance metrics.
+    SLPM algorithm with dynamic shadow price updates
     """
     performance = {}
     for k in k_values:
@@ -41,7 +46,7 @@ def performance_metric_slpm_revised(bids, k_values, n, m, b_i, opt):
 
             # Update dual prices at specified points or at the start
             if i in k_values or i == 0:
-                y_bar = common.solve_partial_lp_dual(bids, i + 1, n, remaining_capacity)
+                y_bar, rev = common.solve_lp_get_dual(bids, i + 1, n, remaining_capacity)
 
             # Allocate based on the decision rule using y_bar
             if y_bar is not None and pi_k > np.dot(a_k, y_bar) and all(remaining_capacity - a_k >= 0):
@@ -59,23 +64,27 @@ if __name__ == "__main__":
     # Parameters
     n = 10000
     m = 10
-    p_bar_fixed = np.ones(m)
+    p_bar = np.ones(m)
     b_i = np.ones(m) * 1000
     k_values = [50, 100, 200]
+    k_step = 50
 
     # Generate bids
-    bids = common.generate_bids(n, m, p_bar_fixed)
+    bids = common.generate_bids(n, m, p_bar)
 
     # Solve offline problem for OPT
     opt = common.solve_offline_lp(bids, m, b_i)
 
     # AHDLA algorithm performance
-    ahlda_performance = {k: ahlda(bids, k, n, m, b_i, opt) for k in k_values}
+    ahd_performance = {}
+    for k in k_values:
+        ahd_performance[k] = ahlda(bids, k, n, b_i, opt)
 
-    print(ahlda_performance[200][:10])  # Display first 10 performance metrics for k=200
+    print('Incremental AHD Algorithm Performance:')
+    print(ahd_performance[200][:10])
 
     # SLPM algorithm performance
-    slpm_performance = performance_metric_slpm_revised(bids, k_values, n, m, b_i, opt)
+    slpm_performance = slpm_problem_3(bids, k_values, n, b_i, opt)
 
-    # Display the first 10 performance metrics for k=200 from SLPM
+    print('Incremental Algorithm Performance:')
     print(slpm_performance[200][:10])

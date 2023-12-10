@@ -1,40 +1,35 @@
 import common
 import numpy as np
+import q1
 
 # Problem 2
-def run_slpm_revised(bids, k_values, n, m, b_i):
-    k_values = [50, 100, 200]  # Different k values to test
-    revenue = 0
+def dynamic_slpm(bids, n, b_i):
+    interval = 50
+    steps = 2
     remaining_capacity = np.array(b_i)
-    y_bar = None
-
+    dual = None
+    revenue = 0
     for i, (a_k, pi_k) in enumerate(bids):
-        # Update dual prices at specified points
-        if i == 0 or i in k_values:
-            print('i = k at ', i)
-            y_bar = common.solve_partial_lp_dual(bids, i + 1, n, remaining_capacity)
-
+        # Update dual prices at specified steps
+        if i == interval:
+            print(f'i: = {i} \n dual: {dual}')
+            dual, current_revenue = common.solve_lp_get_dual(bids, i + 1, n, remaining_capacity)
+            interval*= steps
         # Allocate based on the decision rule using y_bar
-        if y_bar is not None and pi_k > np.dot(a_k, y_bar) and all(remaining_capacity - a_k >= 0):
+        if dual is not None and pi_k > np.dot(a_k, dual) and all(remaining_capacity - a_k >= 0):
             revenue += pi_k
             remaining_capacity -= a_k
-
+    revenue += -(current_revenue)
     return revenue
 
 
-def run_simulation_problem_2(n, m, p_bar, k_values):
+def run_simulation_problem_2(n, m, p_bar):
     # Regenerate bids with the fixed p_bar
     bids_fixed = common.generate_bids(n, m, p_bar)
 
     b_i = np.ones(m) * 1000  # Bid cap for all i
-
-    updated_revenues = {}
-    for k in k_values:
-        revenue = run_slpm_revised(bids_fixed, k, n, m, b_i)
-        updated_revenues[k] = revenue
-    
-    for k, revenue in updated_revenues.items():
-        print(f"SLPM revenue: {revenue} at k={k}")
+    dynamic_rev = dynamic_slpm(bids_fixed, n, b_i)
+    print(f'Dynamic SLPM revenue: {dynamic_rev}')
 
     offline_revenue_value = common.solve_offline_lp(bids_fixed, m, b_i)
 
@@ -49,8 +44,16 @@ if __name__ == "__main__":
     # # Fixed ground truth price vector (p_bar) - set to ones for simplicity
     p_bar_fixed = np.ones(m)  # Vector of ones
 
-    run_simulation_problem_2(n, m, p_bar_fixed, k_values)
-    # SLPM revenue: 10013.070557996842 at k=50
-    # SLPM revenue: 10015.335887968598 at k=100
-    # SLPM revenue: 10010.26340969867 at k=200
-    # Offline revenue: 11281.89486664792
+    run_simulation_problem_2(n, m, p_bar_fixed)
+
+    # i: = 50 
+    # dual: None
+    # i: = 100 
+    # dual: [1.00026286 1.00279371 0.99972416 0.99329563 1.00696832 0.98529363
+    # 1.01031407 0.99965332 1.01005201 1.01862897]
+    # ...
+    # i: = 6400 
+    # dual: [1.00526488 1.00716264 1.00307658 1.00416318 1.00431024 1.00561206
+    # 1.00351953 1.00194944 1.00306047 1.00441075]
+    # Dynamic SLPM revenue: 10014.324607038357
+    # Offline revenue: 10057.733449063195

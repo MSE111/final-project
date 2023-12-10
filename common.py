@@ -40,7 +40,7 @@ def solve_offline_lp(bids, m, b_i):
     else:
         raise ValueError("Offline LP did not converge")
 
-def solve_partial_lp_dual(bids, k, n, b_i):
+def solve_lp_get_dual(bids, k, n, b_i):
     # Objective function: maximize sum(pi_j * x_j) for j=1 to kfb_
     c = -np.array([pi_k for _, pi_k in bids[:k]])
 
@@ -62,6 +62,7 @@ def solve_partial_lp_dual(bids, k, n, b_i):
 
     if result.success:
         # The dual variable corresponding to the inequality constraints A_ub * x <= b_ub
-        return result.get('slack')
+        # return result.get('slack')
+        return  -1*result.ineqlin.get('marginals'), result.get('fun')
     else:
         raise ValueError("failed to find a solution")

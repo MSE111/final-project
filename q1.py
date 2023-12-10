@@ -8,9 +8,7 @@ def run_slpm(bids, k, n, b_i):
     remaining_capacity = np.array(b_i)
     
     # Solve the partial LP for the first k bids to get dual prices
-    y_bar = common.solve_partial_lp_dual(bids, k, n, b_i)
-
-    # Adjust capacity for each item based on the dual prices
+    y_bar, current_rev = common.solve_lp_get_dual(bids, k, n, b_i)
     b_i -= y_bar
 
     for i, (a_k, pi_k) in enumerate(bids):
@@ -46,7 +44,7 @@ def simulate(n, m, p_bar, k_values):
 if __name__ == "__main__":
     bid_count = 10000 
     items = 10
-    k_values = [50, 100, 200, 1000, 5000]  # Different k values to test
+    k_values = [50, 75, 100, 150, 200, 250, 350, 500, 1000, 5000]  # Different k values to test
 
     # Fixed ground truth price vector (p_bar) - set to ones for simplicity
     price_vector = np.ones(items)  # Vector of ones
